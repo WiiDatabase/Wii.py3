@@ -31,10 +31,10 @@ def pad_to_cbyte_array(value, size):
 
 
 class BigEndianStructure(BigEndianStructure):
-    """Extends BigEndianStructure class to optionally load bytes from file
+    """Extends BigEndianStructure class to optionally load bytes from file.
 
        Args:
-           file (str): Path to a file
+           file (str[optional]): Path to a file
     """
 
     def __new__(cls, file=None):

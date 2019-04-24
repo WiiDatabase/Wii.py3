@@ -3,7 +3,7 @@ import socket
 from binascii import hexlify, unhexlify
 from string import hexdigits
 
-from common import *
+from .common import *
 
 
 class NWC24fl(BigEndianStructure):
