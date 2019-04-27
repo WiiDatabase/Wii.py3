@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import os
-from binascii import hexlify
+from binascii import hexlify, unhexlify
 from copy import copy
 
 from .common import *
@@ -341,3 +341,255 @@ class Savegame:
         output += str(self.bkHeader)
 
         return output
+
+
+class LocDat(BigEndianStructure):
+    """Shows info for the "loc.dat" located used by the SD Card menu and present inside the "private" folder.
+       Reference: http://wiibrew.org/wiki//shared2/wc24/nwc24fl.bin
+
+       Args:
+           file (str[optional]): Path to a file
+    """
+
+    MAGIC = b"sdal"
+
+    class Channel(BigEndianStructure):
+        _pack_ = 1
+        _fields_ = [
+            ("id4", ARRAY(c_byte, 4)),
+        ]
+
+        def delete(self):
+            """Empties channel slot. Note that the Wii will re-populate it if it's on SD.
+               NOTE: MD5 has to be updated!
+            """
+            self.id4 = ARRAY(c_byte, sizeof(self.id4)).from_buffer_copy(b"\x00" * sizeof(self.id4))
+
+        def get_titleid(self):
+            """Returns the lower title id of the channel."""
+            return hexlify(bytes(self.id4)).decode()
+
+        def get_id4(self):
+            """Returns the Title ID4 of the channel."""
+            return bytes(self.id4).decode()
+
+        def is_used(self):
+            """Returns True if there's a channel in the slot."""
+            if bytes(self.id4) == b"\x00" * 4:
+                return False
+            else:
+                return True
+
+        def __repr__(self):
+            return self.get_id4()
+
+    _pack_ = 1
+    _fields_ = [
+        ("magic", ARRAY(c_char, 4)),
+        ("md5", ARRAY(c_byte, 16)),
+        ("channels", ARRAY(Channel, 240)),
+        ("padding", ARRAY(c_byte, 12))
+    ]
+
+    def generate_md5(self):
+        """Generates the md5sum."""
+        filecopy = copy(self)
+        filecopy.md5 = ARRAY(c_byte, sizeof(filecopy.md5)).from_buffer_copy(MD5BLANKER)
+        return Crypto.create_md5hash(filecopy.pack(encrypt=False))
+
+    def update_md5(self):
+        """Updates the md5sum in the Struct."""
+        self.md5 = ARRAY(c_byte, sizeof(self.md5)).from_buffer_copy(self.generate_md5())
+
+    def get_used_blocks(self):
+        """Returns the number of used channel slots."""
+        used_blocks = 0
+        for channel in self.channels:
+            if channel.is_used():
+                used_blocks += 1
+        return used_blocks
+
+    def get_free_blocks(self):
+        """Returns the number of free channel slots."""
+        return len(self.channels) - self.get_used_blocks()
+
+    def _get_channel_by_id4_or_tid(self, search, by_titleid=False, return_index=False):
+        """Helper function for get_channel_by_id4 and get_channel_by_titleid.
+
+        Args:
+            search (str): String to search for (ID4 or titleid)
+            by_titleid (bool): Search by lower Title ID instead of ID4
+            return_index (bool): Return index instead of Channel class
+        """
+        if by_titleid:
+            if len(search) != 8:
+                raise ValueError("Lower Title ID must be 8 characters long.")
+        else:
+            if len(search) != 4:
+                raise ValueError("ID4 must be 4 characters long.")
+
+        for i, channel in enumerate(self.channels):
+            if by_titleid:
+                if channel.get_titleid() == search.lower():
+                    if return_index:
+                        return i
+                    else:
+                        return channel
+            else:
+                if channel.get_id4() == search.upper():
+                    if return_index:
+                        return i
+                    else:
+                        return channel
+        raise LookupError("Channel not found.")
+
+    def get_channel_by_id4(self, id4):
+        """Finds a channel by its ID4."""
+        return self._get_channel_by_id4_or_tid(id4)
+
+    def get_channel_index_by_id4(self, id4):
+        """Finds a channel index in self.channels by its ID4."""
+        return self._get_channel_by_id4_or_tid(id4, return_index=True)
+
+    def get_channel_by_titleid(self, tid):
+        """Finds a channel by its Title ID."""
+        return self._get_channel_by_id4_or_tid(tid, by_titleid=True)
+
+    def get_channel_index_by_titleid(self, tid):
+        """Finds a channel index in self.channels by its Title ID."""
+        return self._get_channel_by_id4_or_tid(tid, by_titleid=True, return_index=True)
+
+    def _add_channel_by_id4_or_tid(self, tid, col, row, page, by_titleid=False):
+        """Helper function for add_channel_by_id4 and add_channel_by_titleid.
+
+        Args:
+            tid (str): ID4 or lower Title ID
+            col (int): Column in SD Card Menu (0-3)
+            row (int): Row in SD Card Menu (0-2)
+            page (int): Page in SD Card Menu (0-19)
+            by_titleid (bool): Search by lower Title ID instead of ID4
+        """
+        if not 0 <= col <= 3 or not 0 <= row <= 2 or not 0 <= page <= 19:
+            raise ValueError("Out of bounds.")
+
+        if not by_titleid:  # ID4s must be big
+            tid = tid.upper()
+
+        try:
+            if by_titleid:
+                self._get_channel_by_id4_or_tid(tid, by_titleid=True)
+            else:
+                self._get_channel_by_id4_or_tid(tid)
+            raise Exception("Channel already exists.")
+        except LookupError:
+            pass
+
+        pos = (col + (row * 4) + (page * 12))
+        channel = self.channels[pos]
+
+        if channel.is_used():
+            raise Exception("Destination is not free (used by {0}).".format(channel.get_id4()))
+
+        if by_titleid:
+            self.channels[pos].id4 = ARRAY(c_byte, 4).from_buffer_copy(unhexlify(tid.encode()))
+        else:
+            self.channels[pos].id4 = ARRAY(c_byte, 4).from_buffer_copy(tid.encode())
+        self.update_md5()
+
+    def add_channel_by_id4(self, id4, col, row, page):
+        self._add_channel_by_id4_or_tid(id4, col, row, page)
+
+    def add_channel_by_titleid(self, id4, col, row, page):
+        self._add_channel_by_id4_or_tid(id4, col, row, page, by_titleid=True)
+
+    def move_channel(self, col1, row1, page1, col2, row2, page2):
+        """Moves channel from col1, row1, page1 to col2, row2, page2"""
+        if not 0 <= col1 <= 3 or not 0 <= row1 <= 2 or not 0 <= page1 <= 19:
+            raise ValueError("Source is out of bounds")
+        if not 0 <= col2 <= 3 or not 0 <= row2 <= 2 or not 0 <= page2 <= 19:
+            raise ValueError("Destination is out of bounds")
+        if (col1, row1, page1) == (col2, row2, page2):
+            raise ValueError("Title is already on this position")
+
+        old_position = (col1 + (row1 * 4) + (page1 * 12))
+        old_channel = self.channels[old_position]
+        new_position = (col2 + (row2 * 4) + (page2 * 12))
+        new_channel = self.channels[new_position]
+
+        if not old_channel.is_used():
+            raise Exception("No channel on source.")
+        if new_channel.is_used():
+            raise Exception("Destination is not free (used by {0}).".format(new_channel.get_id4()))
+
+        self.channels[new_position] = self.channels[old_position]
+        old_channel.delete()
+        self.update_md5()
+
+    def pack(self, encrypt=True):
+        """Optionally encrypts data before packing."""
+        if encrypt:
+            pack = Crypto.encrypt_data(SDKEY, SDIV, bytes(self), align=False)
+        else:
+            pack = bytes(self)
+        return pack
+
+    def dump(self, filename, encrypt=True):
+        """Dumps Struct to filename. Returns the filename. Defaults to encrypted."""
+        with open(filename, "wb") as file:
+            file.write(self.pack(encrypt=encrypt))
+            return file.name
+
+    def __new__(cls, file=None):
+        """Loads file intro Struct if given and decrypts it."""
+        if file:
+            fp = open(file, 'r+b')
+            buffer = fp.read((sizeof(cls)))
+            fp.close()
+            buffer = Crypto.decrypt_data(SDKEY, SDIV, buffer, align=False)
+            c_struct = cls.from_buffer_copy(buffer)
+            return c_struct
+        else:
+            return super().__new__(cls)
+
+    def __repr__(self):
+        return "Wii LocDat: {0} slot{1} used out of 240 ({2} free)".format(
+            self.get_used_blocks(),
+            "" if self.get_used_blocks() == 1 else "s",
+            self.get_free_blocks()
+        )
+
+    def __str__(self):
+        output = "LocDat:\n"
+        output += "  Used {0} slot{1} out of 240 ({2} free)\n\n".format(
+            self.get_used_blocks(),
+            "" if self.get_used_blocks() == 1 else "s",
+            self.get_free_blocks()
+        )
+
+        for page in range(20):
+            output += "  Page {0}:\n    ".format(page + 1)
+            for row in range(3):
+                for slot in range(4):
+                    curtitle = self.channels[(slot + (row * 4) + (page * 12))]
+                    if curtitle.is_used():
+                        output += "{0:8}".format(curtitle.get_id4())
+                    else:
+                        output += "{0:8}".format("Free")
+                if row == 2:  # Last row
+                    output += "\n\n"
+                else:
+                    output += "\n    "
+        return output
+
+    def __init__(self, file=None):
+        if not file:
+            self.magic = self.MAGIC
+            self.update_md5()
+
+        if self.magic != self.MAGIC:
+            raise Exception("Not a valid NWC24fl file!")
+
+        if self.generate_md5() != bytes(self.md5):
+            print("MD5 sum mismatch!")
+
+        super().__init__()

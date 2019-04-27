@@ -857,7 +857,7 @@ class IplSave(BigEndianStructure):
                         return i
                     else:
                         return channel
-        raise Exception("Channel not found.")
+        raise LookupError("Channel not found.")
 
     def get_channel_by_id4(self, id4):
         """Finds a channel by its ID4."""
@@ -900,7 +900,7 @@ class IplSave(BigEndianStructure):
         if not old_channel.is_used():
             raise Exception("No channel on source.")
         if new_channel.is_used():
-            raise Exception("Destination is not free (used by {0}.".format(new_channel.get_id4()))
+            raise Exception("Destination is not free (used by {0}).".format(new_channel.get_id4()))
 
         self.channels[new_position] = self.channels[old_position]
         old_channel.delete()
