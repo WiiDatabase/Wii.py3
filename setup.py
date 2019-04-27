@@ -5,14 +5,14 @@ with open("README.md", "r") as fh:
 
 setup(
     name="Wii.py3",
-    version="0.0.1",
+    version="0.0.2",
     author="WiiDatabase.de",
     description="Wii Python library for Python 3.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/WiiDatabase/Wii.py3",
     packages=["Wii"],
-    install_requires=[""],
+    install_requires=["pycryptodome"],
     license="GNU GPL v3",
     python_requires=">=3.4",
     classifiers=[

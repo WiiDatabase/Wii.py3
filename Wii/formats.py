@@ -815,7 +815,7 @@ class IplSave(BigEndianStructure):
 
     def update_md5(self):
         """Updates the md5sum in the Struct."""
-        self.md5 = ARRAY(c_byte, 16).from_buffer_copy(self.generate_md5())
+        self.md5 = ARRAY(c_byte, sizeof(self.md5)).from_buffer_copy(self.generate_md5())
 
     def get_used_blocks(self):
         """Returns the number of used channel slots."""

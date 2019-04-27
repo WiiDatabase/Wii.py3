@@ -2,6 +2,28 @@
 import hashlib
 from ctypes import *
 
+from Crypto.Cipher import AES
+
+# Constants
+SDKEY = b"\xAB\x01\xB9\xD8\xE1\x62\x2B\x08\xAF\xBA\xD8\x4D\xBF\xC2\xA5\x5D"
+SDIV = b"\x21\x67\x12\xE6\xAA\x1F\x68\x9F\x95\xC5\xA2\x23\x24\xDC\x6A\x98"
+MD5BLANKER = b"\x0E\x65\x37\x81\x99\xBE\x45\x17\xAB\x06\xEC\x22\x45\x1A\x57\x93"
+
+
+def align_value(value, blocksize=64):
+    """Aligns value to blocksize.
+
+    Args:
+        value (int): Integer to align
+        blocksize (int): Block size (Default: 64)
+
+    Returns:
+        int: Aligned value
+    """
+    while value % blocksize != 0:
+        value += 1
+    return value
+
 
 def pad_to_blocksize(value, block=64):
     """Pads value to blocksize.
@@ -51,7 +73,7 @@ class BigEndianStructure(BigEndianStructure):
         super().__init__()
 
     def pack(self):
-        """Helper class which packs the Struct into a bytes object."""
+        """Helper function which packs the Struct into a bytes object."""
         return bytes(self)
 
     def dump(self, filename):
@@ -63,6 +85,43 @@ class BigEndianStructure(BigEndianStructure):
 
 class Crypto:
     """Cryptographic/Hash helper class."""
+    ALIGN = 64
+
+    @classmethod
+    def decrypt_data(cls, key, iv, data, align=True):
+        """Decrypts data (aligns to 64 bytes if needed).
+
+        Args:
+            key (bytes): Decryption key
+            iv (bytes): Initialization vector
+            data (bytes): Data to decrypt
+            align (bool): Align to 64 bytes. Defaults to True
+
+        Returns:
+            bytes: Decrypted data
+        """
+        if (len(data) % cls.ALIGN) != 0 and align:
+            return AES.new(key, AES.MODE_CBC, iv).decrypt(data + (b"\x00" * (cls.ALIGN - (len(data) % cls.ALIGN))))
+        else:
+            return AES.new(key, AES.MODE_CBC, iv).decrypt(data)
+
+    @classmethod
+    def encrypt_data(cls, key, iv, data, align=True):
+        """Encrypts data (aligns to 64 bytes, if needed).
+
+        Args:
+            key (bytes): Encryption key
+            iv (bytes): Initialization vector
+            data (bytes): Data to encrypt
+            align (bool): Align to 64 bytes. Defaults to True
+
+        Returns:
+            bytes: Encrypted data
+        """
+        if (len(data) % cls.ALIGN) != 0 and align:
+            return AES.new(key, AES.MODE_CBC, iv).encrypt(data + (b"\x00" * (cls.ALIGN - (len(data) % cls.ALIGN))))
+        else:
+            return AES.new(key, AES.MODE_CBC, iv).encrypt(data)
 
     @classmethod
     def create_md5hash(cls, data):
