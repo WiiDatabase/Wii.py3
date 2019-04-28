@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="Wii.py3",
-    version="0.1.0",
+    version="0.1.1",
     author="WiiDatabase.de",
     description="Wii Python library for Python 3.",
     long_description=long_description,

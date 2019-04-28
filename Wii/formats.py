@@ -6,6 +6,182 @@ from string import hexdigits
 from .common import *
 
 
+class SettingTXT:
+    """Edits the /title/00000001/00000002/data/setting.txt for the sysmenu.
+       Reference: https://github.com/devkitPro/libogc/blob/master/libogc/conf.c
+
+       Args:
+           file (str[optional]): Path to a file
+           encrypted (bool[optional]): Is the file encrypted?
+    """
+
+    XORKEY = 0x73B5DBFA
+    LENGTH = 0x100
+
+    def __init__(self, file=None, encrypted=True):
+        if file:
+            fp = open(file, "rb")
+            conf = fp.read(self.LENGTH)
+            fp.close()
+            # Some consoles (and the Wii U) use LF linebreaks instead of CR LF
+            if conf.rfind(b"\r\n") == -1:
+                self.linebreak = b"\n"
+            else:
+                self.linebreak = b"\r\n"
+        else:
+            conf = b"\x00" * self.LENGTH
+            self.linebreak = b"\r\n"
+        if encrypted:
+            conf = self.crypt(conf)
+
+        self.keys = {}
+        keys = conf.split(self.linebreak)
+
+        self.totalKeys = len(keys) - 1
+        for x in range(self.totalKeys):
+            keyname, keyvalue = keys[x].decode().split("=")
+            self.keys[keyname] = keyvalue
+        self.length = len(self.pack(encrypt=False))
+        if not file:
+            self.set_area("EUR")
+            self.set_model("RVL-001(EUR)")
+            self.set_dvd("0")
+            self.set_mpch("0x7FFE")
+            self.set_code("LEH")
+            self.set_serial("133713379")
+            self.set_video("PAL")
+            self.set_game("EU")
+
+    def crypt(self, data):
+        """Encrypts/decrypts the setting.txt file."""
+        out = b""
+        xorkey = self.XORKEY
+        for x in range(len(data)):
+            out += bytes([data[x] ^ xorkey & 0xFF])
+            xorkey = (xorkey << 1) | (xorkey >> 31)
+        return out
+
+    def get(self, key):
+        """Returns the value of the key."""
+        try:
+            return self.keys[key.upper()]
+        except KeyError:
+            raise KeyError("Key not found")
+
+    def set(self, key, value):
+        """Sets key to value. If the key already exists, it will be modified."""
+        # File length + key length + = + value length + line break length
+        if self.length + len(key) + 1 + len(value) + len(self.linebreak) > self.LENGTH:
+            raise ValueError("Maximum file size exceeded.")
+
+        if not self.key_exist(key):
+            self.totalKeys += 1
+        self.keys[key.upper()] = value
+        self.length = len(self.pack(encrypt=False))
+
+    def delete(self, key):
+        """Deletes a key."""
+        if not self.key_exist(key):
+            raise LookupError("Key not found.")
+
+        del (self.keys[key.upper()])
+        self.totalKeys -= 1
+        self.length = len(self.pack(encrypt=False))
+
+    def key_exist(self, key):
+        """Returns True if the key exists."""
+        return key.upper() in self.keys
+
+    def get_area(self):
+        """Shortcut for get("AREA")."""
+        return self.get("AREA")
+
+    def get_model(self):
+        """Shortcut for get("MODEL")."""
+        return self.get("MODEL")
+
+    def get_dvd(self):
+        """Shortcut for get("DVD")."""
+        return self.get("DVD")
+
+    def get_mpch(self):
+        """Shortcut for get("MPCH")."""
+        return self.get("MPCH")
+
+    def get_code(self):
+        """Shortcut for get(CODE")."""
+        return self.get("CODE")
+
+    def get_serial(self):
+        """Shortcut for get("SERNO")."""
+        return self.get("SERNO")
+
+    def get_video(self):
+        """Shortcut for get("VIDEO")."""
+        return self.get("VIDEO")
+
+    def get_game(self):
+        """Shortcut for get("GAME")."""
+        return self.get("GAME")
+
+    def set_area(self, value):
+        """Shortcut for set("AREA", value)."""
+        self.set("AREA", value)
+
+    def set_model(self, value):
+        """Shortcut for set("MODEL", value)."""
+        self.set("MODEL", value)
+
+    def set_dvd(self, value):
+        """Shortcut for set("DVD", value)."""
+        self.set("DVD", value)
+
+    def set_mpch(self, value):
+        """Shortcut for set("MPCH", value)."""
+        self.set("MPCH", value)
+
+    def set_code(self, value):
+        """Shortcut for set(CODE", value)."""
+        self.set("CODE", value)
+
+    def set_serial(self, value):
+        """Shortcut for set("SERNO", value)."""
+        self.set("SERNO", value)
+
+    def set_video(self, value):
+        """Shortcut for set("VIDEO", value)."""
+        self.set("VIDEO", value)
+
+    def set_game(self, value):
+        """Shortcut for set("GAME", value)."""
+        self.set("GAME", value)
+
+    def pack(self, encrypt=True):
+        """Helper function which packs the Struct into a bytes object."""
+        out = b""
+        for key, value in self.keys.items():
+            out += key.encode() + b"=" + value.encode() + self.linebreak
+        if encrypt:
+            out = self.crypt(out)
+            out += b"\x00" * (self.LENGTH - len(out))  # Fill the rest with zeroes up until LENGTH
+        return out
+
+    def dump(self, filename, encrypt=True):
+        """Dumps setting.txt to filename. Returns the filename. Optionally decrypts."""
+        with open(filename, "wb") as file:
+            file.write(self.pack(encrypt=encrypt))
+            return file.name
+
+    def __repr__(self):
+        return "Wii Setting.txt ({0} keys)".format(self.totalKeys)
+
+    def __str__(self):
+        output = "Setting.txt:\n"
+        for key, value in self.keys.items():
+            output += "  {0} = {1}\n".format(key, value)
+        return output
+
+
 class NWC24fl(BigEndianStructure):
     """Shows info for the friend list, which is stored in /shared2/wc24/nwc24fl.bin.
        Reference: http://wiibrew.org/wiki//shared2/wc24/nwc24fl.bin
