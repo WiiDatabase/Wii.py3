@@ -117,7 +117,7 @@ class Savegame:
 
         def dump(self, filename, encrypt=True):
             """Dumps Struct to filename. Returns the filename. Defaults to encrypted."""
-            with open(filename, "wb") as file:
+            with open(str(filename), "wb") as file:
                 file.write(self.pack(encrypt=encrypt))
                 return file.name
 
@@ -253,7 +253,7 @@ class Savegame:
 
         def dump(self, filename, encrypt=True):
             """Dumps Struct to filename. Returns the filename. Defaults to encrypted."""
-            with open(filename, "wb") as file:
+            with open(str(filename), "wb") as file:
                 file.write(self.pack(encrypt=encrypt))
                 return file.name
 
@@ -304,7 +304,7 @@ class Savegame:
 
         for file_obj in self.files:
             if file_obj.is_file():
-                with open(os.path.join(directory, file_obj.get_name()), "wb") as file:
+                with open(str(os.path.join(directory, file_obj.get_name())), "wb") as file:
                     if encrypt:
                         file.write(file_obj.encrypt_data())
                     else:
@@ -327,7 +327,7 @@ class Savegame:
 
     def dump(self, filename, encrypt=True):
         """Dumps Struct to filename. Returns the filename. Defaults to encrypted."""
-        with open(filename, "wb") as file:
+        with open(str(filename), "wb") as file:
             file.write(self.pack(encrypt=encrypt))
             return file.name
 
@@ -535,7 +535,7 @@ class LocDat(BigEndianStructure):
 
     def dump(self, filename, encrypt=True):
         """Dumps Struct to filename. Returns the filename. Defaults to encrypted."""
-        with open(filename, "wb") as file:
+        with open(str(filename), "wb") as file:
             file.write(self.pack(encrypt=encrypt))
             return file.name
 
