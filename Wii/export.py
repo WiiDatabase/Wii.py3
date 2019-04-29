@@ -535,9 +535,9 @@ class LocDat(BigEndianStructure):
 
     def dump(self, filename, encrypt=True):
         """Dumps Struct to filename. Returns the filename. Defaults to encrypted."""
-        with open(str(filename), "wb") as fp:
-            fp.write(self.pack(encrypt=encrypt))
-            return fp.name
+        with open(str(filename), "wb") as file:
+            file.write(self.pack(encrypt=encrypt))
+            return file.name
 
     def __new__(cls, file=None):
         """Loads file intro Struct if given and decrypts it."""
