@@ -579,6 +579,10 @@ class NetConfig(BigEndianStructure):
 
                 return wep_key.decode()
 
+        def get_mtu(self):
+            """Returns the MTU value."""
+            return self.mtu
+
         def get_ip(self):
             """Returns IP as string."""
             return ".".join(map(str, self.ip))
@@ -813,7 +817,7 @@ class NetConfig(BigEndianStructure):
         def set_proxy(self, server, port):
             """Sets proxy server and port and enables it."""
             if len(server) > 255:
-                raise Exception("Server address must be < 256 characters.")
+                raise ValueError("Server address must be < 256 characters.")
 
             if not isinstance(port, int):
                 raise ValueError("Port must be an integer.")
