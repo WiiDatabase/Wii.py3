@@ -5,13 +5,13 @@ import Wii
 class TestNWC24fl:
     def test_creation(self):
         obj = Wii.NWC24fl()
-        assert obj.magic == b'WcFl'
+        assert obj.magic == obj.MAGIC
         assert obj.maxEntries == 100
         assert obj.friendCount == 0
 
     def test_file(self):
         obj = Wii.NWC24fl("tests/data/nwc24fl.bin")
-        assert obj.magic == b'WcFl'
+        assert obj.magic == obj.MAGIC
         assert obj.maxEntries == 100
         assert obj.friendCount == 3
 

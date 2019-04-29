@@ -416,9 +416,9 @@ class NWC24msg(BigEndianStructure):
             self.mlchkid = pad_to_cbyte_array(b"GeneratedWithWiipy3", 36)
             self.mailEngineURLs[0] = pad_to_cbyte_array(b"https://amw.wc24.wii.com/cgi-bin/account.cgi", 128)
             self.mailEngineURLs[1] = pad_to_cbyte_array(b"http://rcw.wc24.wii.com/cgi-bin/check.cgi", 128)
-            self.mailEngineURLs[2] = pad_to_cbyte_array(b"https://amw.wc24.wii.com/cgi-bin/receive.cgi", 128)
-            self.mailEngineURLs[3] = pad_to_cbyte_array(b"https://amw.wc24.wii.com/cgi-bin/delete.cgi", 128)
-            self.mailEngineURLs[4] = pad_to_cbyte_array(b"https://amw.wc24.wii.com/cgi-bin/send.cgi", 128)
+            self.mailEngineURLs[2] = pad_to_cbyte_array(b"https://mtw.wc24.wii.com/cgi-bin/receive.cgi", 128)
+            self.mailEngineURLs[3] = pad_to_cbyte_array(b"https://mtw.wc24.wii.com/cgi-bin/delete.cgi", 128)
+            self.mailEngineURLs[4] = pad_to_cbyte_array(b"https://mtw.wc24.wii.com/cgi-bin/send.cgi", 128)
             self.update_checksum()
 
         if self.magic != self.MAGIC:
