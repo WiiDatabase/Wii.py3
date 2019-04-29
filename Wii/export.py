@@ -261,7 +261,7 @@ class Savegame:
             return self.get_name()
 
     def __init__(self, file):
-        fp = open(file, 'r+b')
+        fp = open(str(file), 'r+b')
 
         # Decrypt header
         headerbuffer = fp.read(0xF0C0)
@@ -535,16 +535,15 @@ class LocDat(BigEndianStructure):
 
     def dump(self, filename, encrypt=True):
         """Dumps Struct to filename. Returns the filename. Defaults to encrypted."""
-        with open(str(filename), "wb") as file:
-            file.write(self.pack(encrypt=encrypt))
-            return file.name
+        with open(str(filename), "wb") as fp:
+            fp.write(self.pack(encrypt=encrypt))
+            return fp.name
 
     def __new__(cls, file=None):
         """Loads file intro Struct if given and decrypts it."""
         if file:
-            fp = open(file, 'r+b')
-            buffer = fp.read((sizeof(cls)))
-            fp.close()
+            with open(str(file), "rb") as fp:
+                buffer = fp.read((sizeof(cls)))
             buffer = Crypto.decrypt_data(SDKEY, SDIV, buffer, align=False)
             c_struct = cls.from_buffer_copy(buffer)
             return c_struct

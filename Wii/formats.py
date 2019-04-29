@@ -20,19 +20,22 @@ class SettingTXT:
 
     def __init__(self, file=None, encrypted=True):
         if file:
-            fp = open(file, "rb")
-            conf = fp.read(self.LENGTH)
-            fp.close()
-            # Some consoles (and the Wii U) use LF linebreaks instead of CR LF
-            if conf.rfind(b"\r\n") == -1:
-                self.linebreak = b"\n"
-            else:
-                self.linebreak = b"\r\n"
+            with open(str(file), "rb") as fp:
+                conf = fp.read(self.LENGTH)
         else:
             conf = b"\x00" * self.LENGTH
-            self.linebreak = b"\r\n"
+
         if encrypted:
             conf = self.crypt(conf)
+
+        # Some consoles (and the Wii U) use LF linebreaks instead of CR LF
+        if conf.rfind(b"\r\n") == -1:
+            self.linebreak = b"\n"
+        else:
+            self.linebreak = b"\r\n"
+
+        if not file:
+            self.linebreak = b"\r\n"
 
         self.keys = {}
         keys = conf.split(self.linebreak)
@@ -168,7 +171,7 @@ class SettingTXT:
 
     def dump(self, filename, encrypt=True):
         """Dumps setting.txt to filename. Returns the filename. Optionally decrypts."""
-        with open(filename, "wb") as file:
+        with open(str(filename), "wb") as file:
             file.write(self.pack(encrypt=encrypt))
             return file.name
 

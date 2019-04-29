@@ -62,8 +62,8 @@ class BigEndianStructure(BigEndianStructure):
     def __new__(cls, file=None):
         """Loads file intro Struct if given."""
         if file:
-            with open(str(file), "rb") as file:
-                c_struct = cls.from_buffer_copy(file.read(sizeof(cls)))
+            with open(str(file), "rb") as fp:
+                c_struct = cls.from_buffer_copy(fp.read(sizeof(cls)))
             return c_struct
         else:
             return super().__new__(cls)
