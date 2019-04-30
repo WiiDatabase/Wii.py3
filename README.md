@@ -7,6 +7,8 @@ The end goal is to improve the original code, make a few changes to ensure corre
 
 This is a rewrite of my [original Wii.py3](https://github.com/Brawl345/Wii.py3) since the code was horrible.
 
+PyPy 3.5 is NOT supported, because its CTypes implementation is [too buggy](https://travis-ci.com/WiiDatabase/Wii.py3/jobs/196491584#L256-L271).
+
 ## Credits
 * [grp](https://github.com/grp) for the original library
 * All authors who contributored to the original Wii.py
