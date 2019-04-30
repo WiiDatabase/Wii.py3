@@ -15,7 +15,6 @@ class VFF:
            file (str): Path to a file
     """
     # TODO: Add dump_file() function
-    # TODO: Add is_directory() to FileEntry class (along with other attributes)
 
     MAGIC = b"VFF "
     CLUSTERSIZE = 0x200
@@ -94,24 +93,27 @@ class VFF:
         """Represents the directory table of the FAT file system.
            Reference: https://en.wikipedia.org/wiki/Design_of_the_FAT_file_system#Directory_table
         """
-
-        # FAT Attributes
-        # Reference: https://en.wikipedia.org/wiki/Design_of_the_FAT_file_system#DIR_OFS_0Bh
-        READONLY = 1  # Read only
-        HIDDEN = 2  # Hidden
-        SYSTEM = 4  # System file
-        VOLUME_LABEL = 8  # Volume Label
-        DIRECTORY = 16  # Directory
-        ARCHIVE = 32  # Archive
-        DEVICE = 64  # Device
-
         class FileEntry(LittleEndianStructure):
             # Reference: https://en.wikipedia.org/wiki/Design_of_the_FAT_file_system#Directory_entry
+
+            class FileAttributes(LittleEndianStructure):
+                _pack_ = 1
+                _fields_ = [
+                    ("readOnly", c_uint8, 1),
+                    ("hidden", c_uint8, 1),
+                    ("system", c_uint8, 1),
+                    ("volumeLabel", c_uint8, 1),
+                    ("subdirectory", c_uint8, 1),
+                    ("archive", c_uint8, 1),
+                    ("device", c_uint8, 1),
+                    ("reserved", c_uint8, 1)
+                ]
+
             _pack_ = 1
             _fields_ = [
                 ("name", ARRAY(c_char, 8)),
                 ("fileExtension", ARRAY(c_char, 3)),
-                ("attributes", c_uint8),
+                ("attributes", FileAttributes),
                 ("reserved", c_uint8),
                 ("creationTimeMilliseconds", c_uint8),
                 ("creationTime", c_uint16),
@@ -148,6 +150,41 @@ class VFF:
                 else:
                     return False
 
+            def is_read_only(self):
+                """Returns True if the entry is read only."""
+                return bool(self.attributes.readOnly)
+
+            def is_hidden(self):
+                """Returns True if the entry is hidden."""
+                return bool(self.attributes.hidden)
+
+            def is_system(self):
+                """Returns True if the entry is a system file."""
+                return bool(self.attributes.system)
+
+            def is_volume_label(self):
+                """Returns True if the entry is a volume label."""
+                return bool(self.attributes.volumeLabel)
+
+            def is_directory(self):
+                """Returns True if the entry is a directory."""
+                return bool(self.attributes.subdirectory)
+
+            def is_archive(self):
+                """Returns True if the entry is an archive."""
+                return bool(self.attributes.archive)
+
+            def is_device(self):
+                """Returns True if the entry is a device."""
+                return bool(self.attributes.device)
+
+            def is_lfn_entry(self):
+                """Returns True if the entry is a Long File Entry."""
+                if self.is_volume_label() and self.is_system() and self.is_hidden() and self.is_read_only():
+                    return True
+                else:
+                    return False
+
             def __repr__(self):
                 return self.get_full_name()
 
@@ -161,7 +198,7 @@ class VFF:
                 if file.is_empty():
                     continue
                 # https://en.wikipedia.org/wiki/Design_of_the_FAT_file_system#VFAT_long_file_names
-                if file.attributes & 0xF == 0xF:
+                if file.is_lfn_entry():
                     continue
                 self.entries.append(file)
 
@@ -169,7 +206,7 @@ class VFF:
             """Lists a directory."""
             for file in self.entries:
                 fullname = file.get_full_name()
-                if file.attributes & self.DIRECTORY:
+                if file.is_directory():
                     if fullname in [".", ".."]:
                         continue
                     print("{0}/{1}/".format(pre, fullname))
@@ -185,7 +222,7 @@ class VFF:
 
             for file in self.entries:
                 fullname = file.get_full_name()
-                if file.attributes & self.DIRECTORY:
+                if file.is_directory():
                     if fullname in [".", ".."]:
                         continue
                     print("{0}/{1}/".format(path, fullname))
@@ -198,7 +235,7 @@ class VFF:
         def __getitem__(self, d):
             for file in self.entries:
                 if file.get_full_name().lower() == d.lower():
-                    if file.attributes & self.DIRECTORY:
+                    if file.is_directory():
                         return VFF.Directory(self.vff, self.vff.read_chain(file.offset))
                     elif not file.size:
                         return ""

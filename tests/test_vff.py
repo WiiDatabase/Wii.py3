@@ -13,17 +13,38 @@ class TestVFF:
         assert obj.offset == 5152
         assert obj.fat1.type == 12
 
-        assert obj.root.entries[0].get_full_name() == "MB"
         assert not obj.root.entries[0].is_empty()
+        assert obj.root.entries[0].get_full_name() == "MB"
+        assert not obj.root.entries[0].is_read_only()
+        assert not obj.root.entries[0].is_hidden()
+        assert not obj.root.entries[0].is_system()
+        assert not obj.root.entries[0].is_volume_label()
+        assert obj.root.entries[0].is_directory()
+        assert not obj.root.entries[0].is_archive()
+        assert not obj.root.entries[0].is_device()
 
-        assert obj.root.entries[1].get_full_name() == "DISTMAP.BIN"
         assert not obj.root.entries[1].is_empty()
+        assert obj.root.entries[1].get_full_name() == "DISTMAP.BIN"
+        assert not obj.root.entries[1].is_read_only()
+        assert not obj.root.entries[1].is_hidden()
+        assert not obj.root.entries[1].is_system()
+        assert not obj.root.entries[1].is_volume_label()
+        assert not obj.root.entries[1].is_directory()
+        assert obj.root.entries[1].is_archive()
+        assert not obj.root.entries[1].is_device()
 
-        assert obj.root.entries[2].get_full_name() == "GHOST.BIN"
         assert not obj.root.entries[2].is_empty()
+        assert obj.root.entries[2].get_full_name() == "GHOST.BIN"
+        assert not obj.root.entries[2].is_read_only()
+        assert not obj.root.entries[2].is_hidden()
+        assert not obj.root.entries[2].is_system()
+        assert not obj.root.entries[2].is_volume_label()
+        assert not obj.root.entries[2].is_directory()
+        assert obj.root.entries[2].is_archive()
+        assert not obj.root.entries[2].is_device()
 
-        assert obj.root["MB"].entries[0].attributes == 16
-        assert obj.root["MB"].entries[1].attributes == 16
+        assert obj.root["MB"].entries[0].is_directory()
+        assert obj.root["MB"].entries[1].is_directory()
         assert len(obj.root["DISTMAP.BIN"]) == 20870
         assert len(obj.root["GHOST.BIN"]) == 2876
 
