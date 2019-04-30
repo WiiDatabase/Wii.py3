@@ -621,7 +621,7 @@ class NetConfig(BigEndianStructure):
 
         def delete(self):
             """Deletes all settings."""
-            # TODO: Find a elegant way to do this instead of re-assigning every single variable
+            # TODO: Find an elegant way to do this instead of re-assigning every single variable
             return NotImplementedError()
 
         def set_wifi(self):

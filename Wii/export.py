@@ -380,6 +380,7 @@ class LocDat(BigEndianStructure):
        Args:
            file (str[optional]): Path to a file
     """
+    # TODO: Move channel by Channel class or index
 
     MAGIC = b"sdal"
 
@@ -401,11 +402,13 @@ class LocDat(BigEndianStructure):
 
         def get_id4(self):
             """Returns the Title ID4 of the channel."""
+            if self.get_titleid() == "00000000":
+                return ""
             return bytes(self.id4).decode()
 
         def is_used(self):
             """Returns True if there's a channel in the slot."""
-            if bytes(self.id4) == b"\x00" * 4:
+            if self.get_id4() == "":
                 return False
             else:
                 return True
@@ -420,6 +423,10 @@ class LocDat(BigEndianStructure):
         ("channels", ARRAY(Channel, 240)),
         ("padding", ARRAY(c_byte, 12))
     ]
+
+    def get_md5_hash(self):
+        """Returns MD5 hash as string."""
+        return hexlify(bytes(self.md5)).decode()
 
     def generate_md5(self):
         """Generates the md5sum."""
@@ -547,9 +554,9 @@ class LocDat(BigEndianStructure):
         new_channel = self.channels[new_position]
 
         if not old_channel.is_used():
-            raise Exception("No channel on source.")
+            raise LookupError("No channel on source.")
         if new_channel.is_used():
-            raise Exception("Destination is not free (used by {0}).".format(new_channel.get_id4()))
+            raise ValueError("Destination is not free (used by {0}).".format(new_channel.get_id4()))
 
         self.channels[new_position] = self.channels[old_position]
         old_channel.delete()

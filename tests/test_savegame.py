@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-from binascii import hexlify
 import os
+from binascii import hexlify
 
 import Wii
 
