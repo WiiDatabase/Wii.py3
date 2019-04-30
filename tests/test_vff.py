@@ -4,7 +4,7 @@ import os
 import Wii
 
 
-class TestIplSave:
+class TestVFF:
     def test_file(self):
         obj = Wii.VFF("tests/data/wc24dl.vff")
         assert obj.header.magic == obj.MAGIC

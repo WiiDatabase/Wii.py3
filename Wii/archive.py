@@ -179,6 +179,7 @@ class VFF:
 
         def dump(self, path):
             """Dumps the whole filesystem to path."""
+            path = str(path)
             if not os.path.isdir(path):
                 os.makedirs(path)
 
