@@ -15,6 +15,7 @@ class VFF:
            file (str): Path to a file
     """
     # TODO: Add dump_file() function
+    # TODO: Add is_directory() to FileEntry class (along with other attributes)
 
     MAGIC = b"VFF "
     CLUSTERSIZE = 0x200
@@ -204,7 +205,7 @@ class VFF:
                         return self.vff.read_chain(file.offset)[:file.size]
 
     def __init__(self, file):
-        self.fp = open(file, 'r+b')
+        self.fp = open(str(file), 'r+b')
         self.header = self.Header.from_buffer_copy(self.fp.read(sizeof(self.Header)))
 
         if self.header.magic != self.MAGIC:
