@@ -28,6 +28,7 @@ class TestVFF:
         assert len(obj.root["GHOST.BIN"]) == 2876
 
     def test_dumping(self, tmpdir):
+        tmpdir = str(tmpdir)
         obj = Wii.VFF("tests/data/wc24dl.vff")
         obj.dump(tmpdir + "/wc24dl_extracted")
         assert os.path.getsize(tmpdir + "/wc24dl_extracted/DISTMAP.BIN") == 20870
