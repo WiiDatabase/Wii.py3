@@ -940,6 +940,7 @@ class IplSave(BigEndianStructure):
            file (str[optional]): Path to a file
     """
     # TODO: Support 832 bytes file (Wii menu 2.0 - 4.0)
+    # TODO: Move channel by Channel class or index
 
     MAGIC = b"RIPL"
 
@@ -959,6 +960,8 @@ class IplSave(BigEndianStructure):
 
         def get_id4(self):
             """Returns the ID4 of the channel."""
+            if self.titleid == 0:
+                return ""
             return unhexlify("{:08x}".format(self.titleid & 0xFFFFFFFF)).decode()
 
         def is_used(self):
@@ -1064,7 +1067,7 @@ class IplSave(BigEndianStructure):
             if channel.is_disc_channel():
                 return i
 
-        raise Exception("Disc channel not found.")
+        raise LookupError("Disc channel not found.")
 
     def move_channel(self, col1, row1, page1, col2, row2, page2):
         """Moves channel from col1, row1, page1 to col2, row2, page2"""
@@ -1081,9 +1084,9 @@ class IplSave(BigEndianStructure):
         new_channel = self.channels[new_position]
 
         if not old_channel.is_used():
-            raise Exception("No channel on source.")
+            raise LookupError("No channel on source.")
         if new_channel.is_used():
-            raise Exception("Destination is not free (used by {0}).".format(new_channel.get_id4()))
+            raise ValueError("Destination is not free (used by {0}).".format(new_channel.get_id4()))
 
         self.channels[new_position] = self.channels[old_position]
         old_channel.delete()
