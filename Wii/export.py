@@ -14,6 +14,7 @@ class Savegame:
            file (str): Path to a file
     """
     # TODO: Certificates at end of file
+    # TODO: More functions for editing data
 
     BANNERMAGIC = b"WIBN"
     BACKUPMAGIC = b"Bk"
@@ -107,6 +108,22 @@ class Savegame:
             ("banner", Banner)
         ]
 
+        def set_title(self, title):
+            """Sets the game's title and updates the MD5."""
+            if len(title) > 32:
+                raise ValueError("Game title must be < 32 characters.")
+
+            self.banner.gameTitle = pad_to_cbyte_array(title.encode("utf-16-be"), 64)
+            self.update_md5()
+
+        def set_subtitle(self, subtitle):
+            """Sets the game's subtitle and updates the MD5."""
+            if len(subtitle) > 32:
+                raise ValueError("Game sub title must be < 32 characters.")
+
+            self.banner.gameSubTitle = pad_to_cbyte_array(subtitle.encode("utf-16-be"), 64)
+            self.update_md5()
+
         def pack(self, encrypt=True):
             """Optionally encrypts data before packing."""
             if encrypt:
@@ -161,6 +178,12 @@ class Savegame:
             ("padding", ARRAY(c_byte, 16))
         ]
 
+        def set_gameid(self, gameid):
+            """Changes the Game ID."""
+            if len(gameid) > 4:
+                raise ValueError("Game ID must be < 4 characters.")
+            self.gameID = gameid.encode()
+
         def get_gameid(self):
             """Returns the Game ID."""
             return self.gameID.decode()
@@ -188,7 +211,10 @@ class Savegame:
 
         def get_blocks(self):
             """Returns savedata size in blocks, rounded to next integer."""
-            return int(round(self.totalSize / 131072, 0))
+            blocks = int(round(self.totalSize / 131072, 0))
+            if not blocks:
+                blocks = 1
+            return blocks
 
         def __repr__(self):
             return "Savegame Backup Header for {0}".format(self.get_gameid())
@@ -230,6 +256,10 @@ class Savegame:
         def get_name(self):
             """Returns the file name."""
             return bytes(self.header.namedata).split(b"\x00")[0].decode()
+
+        def get_size(self):
+            """Returns the file size, rounded up to the next 64 byte boundary."""
+            return align_value(self.header.size)
 
         def is_file(self):
             """Returns True if the file is a file and False if it's a directory."""
@@ -287,7 +317,7 @@ class Savegame:
             filehdr = fp.read(sizeof(self.File))
             self.files.append(self.File.from_buffer_copy(filehdr))
             self.files[i].iv = filehdr[0x050:0x050 + 16]  # IV is always at 0x050 in the file header
-            filedata = fp.read(align_value(self.files[i].header.size))
+            filedata = fp.read(self.files[i].get_size())
             dec_filedata = Crypto.decrypt_data(SDKEY, self.files[i].iv, filedata)
             self.files[i].data = dec_filedata
 
