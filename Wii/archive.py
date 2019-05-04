@@ -76,7 +76,7 @@ class VFF:
                 chain.append(clus)
                 clus = self[clus]
             if not self.is_last(clus):
-                raise Exception("Found 0x%04x in cluster chain".format(clus))
+                raise Exception("Found {:04x} in cluster chain".format(clus))
             return chain
 
         def __getitem__(self, item):
@@ -241,6 +241,9 @@ class VFF:
                         return ""
                     else:
                         return self.vff.read_chain(file.offset)[:file.size]
+
+        def __repr__(self):
+            return "VFF Directory: {0}".format((repr(self.entries)))
 
     def __init__(self, file):
         self.fp = open(str(file), 'r+b')

@@ -59,8 +59,8 @@ class SettingTXT:
         """Encrypts/decrypts the setting.txt file."""
         out = b""
         xorkey = self.XORKEY
-        for x in range(len(data)):
-            out += bytes([data[x] ^ xorkey & 0xFF])
+        for byt in data:
+            out += bytes([byt ^ xorkey & 0xFF])
             xorkey = (xorkey << 1) | (xorkey >> 31)
         return out
 
