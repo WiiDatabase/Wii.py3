@@ -185,6 +185,234 @@ class SettingTXT:
         return output
 
 
+class NWC24dl(BigEndianStructure):
+    """Shows info about the WiiConnect24 download list stored in /shared2/wc24/nwc24dl.bin.
+       Reference: https://github.com/WiiDatabase/wmb-asm/blob/master/libwc24/libwc24/include/wc24.h
+
+       Args:
+           file (str[optional]): Path to a file
+    """
+    # TODO: Search records and entries
+    # TODO: Add entries
+
+    MAGIC = b"WcDl"
+
+    class WC24Record(BigEndianStructure):
+        _pack_ = 1
+        _fields_ = [
+            ("titleid", c_uint32),
+            ("nextDl", c_uint32),
+            ("lastModified", c_uint32),
+            ("recordFlags", c_uint8),
+            ("padding", ARRAY(c_byte, 3))
+        ]
+
+        def is_empty(self):
+            """Returns True if record is empty."""
+            return self.titleid == 0
+
+        def get_titleid(self):
+            """Returns the lower title id of the record."""
+            return "{:08x}".format(self.titleid & 0xFFFFFFFF)
+
+        def get_id4(self):
+            """Returns the ID4 of the record."""
+            if self.titleid == 0:
+                return ""
+            return unhexlify("{:08x}".format(self.titleid & 0xFFFFFFFF)).decode()
+
+        def __repr__(self):
+            if self.is_empty():
+                return "Empty WC24 Record"
+            return "WC24 Record for {0} ({1})".format(self.get_id4(), self.get_titleid())
+
+        def __str__(self):
+            if self.is_empty():
+                return "Empty WC24 Record"
+
+            output = "WC24 Record:\n"
+            output += "  Title ID: {0} ({1})\n".format(self.get_id4(), self.get_titleid())
+
+            return output
+
+    class WC24Entry(BigEndianStructure):
+        _pack_ = 1
+        _fields_ = [
+            ("index", c_uint16),
+            ("type", c_uint8),
+            ("recordFlags", c_uint8),
+            ("flags", c_uint32),
+            ("id", c_uint32),
+            ("titleid", c_uint64),
+            ("groupId", c_uint16),
+            ("unknown1", c_uint16),
+            ("dlLeft", c_uint16),
+            ("totalErrors", c_uint16),
+            ("frequency", c_uint16),
+            ("frequency_days", c_uint16),
+            ("errorCode", c_int32),
+            ("subTaskUnknown1", c_uint8),
+            ("subTaskUnknown2", c_uint8),
+            ("subTaskFlags", c_uint8),
+            ("subTaskUnknown3", c_uint8),
+            ("subTaskBitMask", c_uint32),
+            ("subTaskUnknown4", c_uint16),
+            ("subTaskUnknown5", c_uint16),
+            ("dlTimestamp", c_uint32),
+            ("subTaskTimestamps", ARRAY(c_uint32, 32)),
+            ("url", ARRAY(c_byte, 236)),
+            ("filename", ARRAY(c_byte, 64)),
+            ("unknown2", ARRAY(c_byte, 29)),
+            ("NHTTPRootCA", c_uint8),
+            ("unknown3", c_uint16)
+        ]
+
+        def is_empty(self):
+            """Returns True if entry is empty."""
+            return self.type == 255
+
+        def get_type(self):
+            """Returns the entry type."""
+            wc24_types = {
+                2: "Message Board E-Mail",
+                3: "Title Download",
+                255: "Empty"
+            }
+            try:
+                return wc24_types[self.type]
+            except KeyError:
+                return "Unknown"
+
+        def get_id4(self):
+            """Returns the ID4 of the entry."""
+            if self.id == 0:
+                return ""
+            return unhexlify("{:08x}".format(self.id & 0xFFFFFFFF)).decode()
+
+        def get_titleid(self):
+            """Returns the long title id of the entry."""
+            return "{:08x}{:08x}".format(self.titleid >> 32, self.titleid & 0xFFFFFFFF)
+
+        def get_url(self):
+            """Returns the entry URL."""
+            return bytes(self.url).rstrip(b"\x00").decode()
+
+        def get_filename(self):
+            """Returns the entry filename."""
+            return bytes(self.filename).rstrip(b"\x00").decode()
+
+        def set_url(self, url):
+            """Sets URL."""
+            if len(url) > 236:
+                raise ValueError("URL must be <= 236 characters.")
+
+            url = pad_to_cbyte_array(url.encode(), 236)
+            self.url = url
+
+        def set_filename(self, filename):
+            """Sets filename."""
+            if len(filename) > 64:
+                raise ValueError("File name must be <= 64 characters.")
+
+            filename = pad_to_cbyte_array(filename.encode(), 64)
+            self.filename = filename
+
+        def set_dl_left(self, num):
+            """Sets numbers of downloads left."""
+            if num > 32767:
+                print("WARNING: Number is bigger than 32767, this is UNTESTED!")
+
+            if num > 65535:
+                raise ValueError("Number must be smaller than 65535.")
+
+            self.dlLeft = num
+
+        def set_frequency(self, frequency):
+            """Sets frequency for entry."""
+            if frequency <= 0:
+                raise ValueError("Frequency must be bigger than 0.")
+
+            self.frequency = frequency
+
+        def __repr__(self):
+            if self.is_empty():
+                return "Empty WC24 Entry"
+            return "WC24 Entry for {0} ({1})".format(self.get_id4(), self.get_titleid())
+
+        def __str__(self):
+            if self.is_empty():
+                return "Empty WC24 Entry"
+
+            output = "  WC24 Entry #{0}:\n".format(self.index)
+            output += "    Title ID: {0} ({1})\n".format(self.get_id4(), self.get_titleid())
+            output += "    Type: {0}\n".format(self.get_type())
+            output += "    URL: {0}\n".format(self.get_url())
+            if self.get_filename():
+                output += "    Filename: {0}\n".format(self.get_filename())
+            output += "    Downloaded every {0}\n".format(
+                "minute" if self.frequency == 1 else "{0} minutes".format(self.frequency)
+            )
+            output += "    {0} download{1} until removed\n".format(self.dlLeft, "" if self.dlLeft == 1 else "s")
+
+            return output
+
+    _pack_ = 1
+    _fields_ = [
+        ("magic", ARRAY(c_char, 4)),
+        ("unknown1", c_uint32),
+        ("padding", ARRAY(c_byte, 8)),
+        ("unknown2", c_uint16),
+        ("reservedEntries", c_uint16),
+        ("maxEntries", c_uint16),
+        ("reserved", ARRAY(c_byte, 106)),
+        ("records", ARRAY(WC24Record, 120)),
+        ("entries", ARRAY(WC24Entry, 120))
+    ]
+
+    def get_used_entries(self):
+        """Returns the number of used entry slots."""
+        used_entries = 0
+        for entry in self.entries:
+            if not entry.is_empty():
+                used_entries += 1
+        return used_entries
+
+    def get_free_entries(self):
+        """Returns the number of free entry slots."""
+        return self.maxEntries - self.get_used_entries()
+
+    def __init__(self, file=None):
+        if not file:
+            self.magic = self.MAGIC
+            self.unknown1 = 1
+            self.unknown2 = 32
+            self.reservedEntries = 8
+            self.maxEntries = 120
+            for entry in self.entries:
+                entry.type = 255
+
+        if self.magic != self.MAGIC:
+            raise Exception("Not a valid NWC24dl file!")
+
+        super().__init__()
+
+    def __repr__(self):
+        return "WC24DL: {0}/{1} Entries used".format(self.get_used_entries(), self.maxEntries)
+
+    def __str__(self):
+        output = "NWC24dl:\n"
+        output += "  {0}/{1} Entries used\n\n".format(self.get_used_entries(), self.maxEntries)
+
+        for entry in self.entries:
+            if entry.is_empty():
+                continue
+
+            output += str(entry)
+            output += "\n"
+
+        return output
+
+
 class NWC24fl(BigEndianStructure):
     """Shows info for the friend list, which is stored in /shared2/wc24/nwc24fl.bin.
        Reference: http://wiibrew.org/wiki//shared2/wc24/nwc24fl.bin
