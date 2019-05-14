@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import socket
 from binascii import hexlify, unhexlify
+from datetime import datetime, timedelta
 from string import hexdigits
 
 from .common import *
@@ -221,6 +222,14 @@ class NWC24dl(BigEndianStructure):
                 return ""
             return unhexlify("{:08x}".format(self.titleid & 0xFFFFFFFF)).decode()
 
+        def get_next_download(self):
+            """Returns the next download time as datetime."""
+            return datetime(1970, 1, 1) + timedelta(minutes=self.nextDl)
+
+        def get_last_modified(self):
+            """Returns the last modified time as datetime."""
+            return datetime(1970, 1, 1) + timedelta(minutes=self.lastModified)
+
         def __repr__(self):
             if self.is_empty():
                 return "Empty WC24 Record"
@@ -232,6 +241,9 @@ class NWC24dl(BigEndianStructure):
 
             output = "WC24 Record:\n"
             output += "  Title ID: {0} ({1})\n".format(self.get_id4(), self.get_titleid())
+            output += "  Next Download: {0}\n".format(self.get_next_download())
+            if self.lastModified > 0:
+                output += "  Last modified: {0}\n".format(self.get_last_modified())
 
             return output
 
@@ -293,6 +305,10 @@ class NWC24dl(BigEndianStructure):
             """Returns the long title id of the entry."""
             return "{:08x}{:08x}".format(self.titleid >> 32, self.titleid & 0xFFFFFFFF)
 
+        def get_dl_timestamp(self):
+            """Returns the last successful download as datetime."""
+            return datetime(1970, 1, 1) + timedelta(minutes=self.dlTimestamp)
+
         def get_url(self):
             """Returns the entry URL."""
             return bytes(self.url).rstrip(b"\x00").decode()
@@ -352,6 +368,11 @@ class NWC24dl(BigEndianStructure):
             output += "    Downloaded every {0}\n".format(
                 "minute" if self.frequency == 1 else "{0} minutes".format(self.frequency)
             )
+            output += "    Last successful download: "
+            if self.dlTimestamp > 0:
+                output += "{0}\n".format(self.get_dl_timestamp())
+            else:
+                output += "Never\n"
             output += "    {0} download{1} until removed\n".format(self.dlLeft, "" if self.dlLeft == 1 else "s")
 
             return output
